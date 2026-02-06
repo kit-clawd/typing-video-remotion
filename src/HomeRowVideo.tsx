@@ -7,15 +7,16 @@ import {
   staticFile,
   Audio,
   Img,
+  Sequence,
 } from 'remotion';
 import { loadFont } from '@remotion/google-fonts/Quicksand';
-// import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { Keyboard } from './Keyboard';
 import {
   homeRowScript,
   getCurrentScene,
   getHighlightedKeys,
   getActiveKeyPress,
+  getAllKeyPresses,
 } from './script';
 import { KEY_TO_IMAGE, RESTING_HANDS } from './hand-mapping';
 
@@ -69,6 +70,80 @@ interface HomeRowProps {
   lottieY?: number;
 }
 
+// Talking Head Character Component
+const TalkingHead: React.FC<{ isTalking: boolean; frame: number }> = ({ isTalking, frame }) => {
+  // Subtle idle bounce animation
+  const idleBounce = Math.sin(frame * 0.15) * 3;
+  
+  // Talking animation - faster bobbing when speaking
+  const talkBounce = isTalking ? Math.sin(frame * 0.4) * 5 : 0;
+  
+  // Combine animations
+  const totalBounce = idleBounce + talkBounce;
+  
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 40,
+        bottom: 140,
+        width: 200,
+        height: 360,
+        transform: `translateY(${totalBounce}px)`,
+        transition: 'transform 0.1s ease-out',
+        zIndex: 100,
+      }}
+    >
+      {/* Character image */}
+      <Img
+        src={staticFile('teacher-character.png')}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))',
+        }}
+      />
+      
+      {/* Talking indicator - subtle glow when speaking */}
+      {isTalking && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
+            animation: 'pulse 0.5s ease-in-out infinite alternate',
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Typing SFX Component - plays click sound for each key press
+const TypingSFX: React.FC = () => {
+  const { fps } = useVideoConfig();
+  const allKeyPresses = getAllKeyPresses(homeRowScript, fps);
+  
+  return (
+    <>
+      {allKeyPresses.map((kp, index) => (
+        <Sequence key={index} from={kp.frame} durationInFrames={fps}>
+          <Audio 
+            src={staticFile('key-click.mp3')} 
+            volume={0.4}
+          />
+        </Sequence>
+      ))}
+    </>
+  );
+};
+
 export const HomeRowVideo: React.FC<HomeRowProps> = ({
   leftHandX: leftHandXProp = -150,
   leftHandY: leftHandYProp = 0,
@@ -76,9 +151,6 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
   rightHandY: rightHandYProp = 60,
   handScale: handScaleProp = 1,
   contentOffsetY: contentOffsetYProp = -40,
-  lottieSize: lottieSizeProp = 200,
-  lottieX: lottieXProp = 50,
-  lottieY: lottieYProp = 800,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
@@ -94,21 +166,28 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
     ? getHandImages([activeKey])
     : { leftImage: RESTING_HANDS.left, rightImage: RESTING_HANDS.right };
   
-  // Background gradient animation
-  const bgHue = interpolate(frame, [0, fps * 44], [200, 220], {
+  // Determine if character should be "talking" (scene is active and has script)
+  const isTalking = currentScene !== null && currentScene.script.length > 0 && frame >= fps * 2;
+  
+  // Enhanced background gradient animation with subtle pattern
+  const bgHue = interpolate(frame, [0, fps * 44], [200, 240], {
+    extrapolateRight: 'clamp',
+  });
+  
+  const bgSaturation = interpolate(frame, [0, fps * 44], [65, 75], {
     extrapolateRight: 'clamp',
   });
   
   // Keyboard fills most of the frame - using new keyboard image (1598x686)
-  const keyboardWidth = width * 0.83;
-  const keyboardX = (width - keyboardWidth) / 2;
-  const keyboardY = height * 0.05;
+  const keyboardWidth = width * 0.75;
+  const keyboardX = (width - keyboardWidth) / 2 + 50; // Shifted right for character
+  const keyboardY = height * 0.08;
   
   // Hand scale and positions - from props for live adjustment
   const handScale = handScaleProp;
-  const leftHandX = leftHandXProp;
+  const leftHandX = leftHandXProp + 50; // Shift right with keyboard
   const leftHandY = leftHandYProp;
-  const rightHandX = rightHandXProp;
+  const rightHandX = rightHandXProp + 50;
   const rightHandY = rightHandYProp;
   
   // Calculate scaled hand dimensions
@@ -117,9 +196,85 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(180deg, hsl(${bgHue}, 70%, 55%) 0%, hsl(${bgHue + 10}, 60%, 45%) 100%)`,
+        background: `
+          linear-gradient(135deg, 
+            hsl(${bgHue}, ${bgSaturation}%, 55%) 0%, 
+            hsl(${bgHue + 20}, ${bgSaturation - 10}%, 40%) 50%,
+            hsl(${bgHue + 30}, ${bgSaturation - 5}%, 35%) 100%
+          )
+        `,
+        overflow: 'hidden',
       }}
     >
+      {/* Subtle animated background pattern */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `
+            radial-gradient(circle at 20% 80%, rgba(255,255,255,0.05) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 40%),
+            radial-gradient(circle at 50% 50%, rgba(0,0,0,0.1) 0%, transparent 60%)
+          `,
+          pointerEvents: 'none',
+        }}
+      />
+      
+      {/* Floating shapes for visual interest */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '10%',
+          right: '5%',
+          width: 150,
+          height: 150,
+          borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+          background: 'rgba(255,255,255,0.05)',
+          transform: `rotate(${frame * 0.5}deg)`,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '15%',
+          right: '10%',
+          width: 100,
+          height: 100,
+          borderRadius: '50%',
+          background: 'rgba(255,255,255,0.03)',
+          transform: `translateY(${Math.sin(frame * 0.1) * 10}px)`,
+        }}
+      />
+      
+      {/* typing.com branding - top right */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 30,
+          right: 40,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          zIndex: 50,
+        }}
+      >
+        <span
+          style={{
+            color: 'rgba(255,255,255,0.9)',
+            fontSize: 28,
+            fontFamily,
+            fontWeight: 700,
+            textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+            letterSpacing: '-0.5px',
+          }}
+        >
+          typing.com
+        </span>
+      </div>
+      
       {/* Title card - first 2 seconds */}
       {frame < fps * 2 && (
         <AbsoluteFill
@@ -131,11 +286,12 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
           <h1
             style={{
               color: 'white',
-              fontSize: 80,
+              fontSize: 90,
               fontFamily,
               fontWeight: 700,
-              textShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              textShadow: '0 6px 30px rgba(0,0,0,0.4)',
               opacity: interpolate(frame, [0, fps * 0.5, fps * 1.5, fps * 2], [0, 1, 1, 0]),
+              transform: `scale(${interpolate(frame, [0, fps * 0.5], [0.9, 1], { extrapolateRight: 'clamp' })})`,
             }}
           >
             The Home Row
@@ -146,6 +302,9 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
       {/* Main content - after title */}
       {frame >= fps * 2 && (
         <>
+          {/* Talking Head Character */}
+          <TalkingHead isTalking={isTalking} frame={frame} />
+          
           {/* Keyboard */}
           <div
             style={{
@@ -187,31 +346,43 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
             }}
           />
           
-          {/* Caption */}
+          {/* Enhanced Caption/Subtitle */}
           {currentScene && (
             <div
               style={{
                 position: 'absolute',
-                bottom: 60,
+                bottom: 50,
                 left: 0,
                 right: 0,
-                textAlign: 'center',
+                display: 'flex',
+                justifyContent: 'center',
+                padding: '0 40px',
               }}
             >
-              <p
+              <div
                 style={{
-                  color: 'white',
-                  fontSize: 32,
-                  fontFamily,
-                  fontWeight: 500,
-                  textShadow: '0 2px 10px rgba(0,0,0,0.5)',
-                  margin: 0,
-                  padding: '0 100px',
-                  lineHeight: 1.4,
+                  background: 'rgba(0,0,0,0.6)',
+                  borderRadius: 16,
+                  padding: '16px 32px',
+                  backdropFilter: 'blur(10px)',
+                  maxWidth: '70%',
                 }}
               >
-                {currentScene.script}
-              </p>
+                <p
+                  style={{
+                    color: 'white',
+                    fontSize: 44,
+                    fontFamily,
+                    fontWeight: 600,
+                    textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                    margin: 0,
+                    lineHeight: 1.3,
+                    textAlign: 'center',
+                  }}
+                >
+                  {currentScene.script}
+                </p>
+              </div>
             </div>
           )}
         </>
@@ -219,6 +390,12 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
       
       {/* Voiceover audio */}
       <Audio src={staticFile('voiceover.mp3')} />
+      
+      {/* Typing sound effects */}
+      <TypingSFX />
+      
+      {/* Background music - low volume */}
+      {/* <Audio src={staticFile('background-music.mp3')} volume={0.1} loop /> */}
     </AbsoluteFill>
   );
 };
