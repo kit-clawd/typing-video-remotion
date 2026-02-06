@@ -219,3 +219,28 @@ export const getHandPose = (
   
   return poseAction?.pose || 'rest';
 };
+
+// Get all key presses with their absolute frame positions (for sound effects)
+export interface AbsoluteKeyPress {
+  frame: number;
+  key: string;
+}
+
+export const getAllKeyPresses = (
+  script: VideoScript,
+  fps: number
+): AbsoluteKeyPress[] => {
+  const keyPresses: AbsoluteKeyPress[] = [];
+  
+  for (const scene of script.scenes) {
+    if (scene.keyPresses) {
+      for (const kp of scene.keyPresses) {
+        const absoluteTime = scene.startTime + kp.time;
+        const frame = Math.round(absoluteTime * fps);
+        keyPresses.push({ frame, key: kp.key });
+      }
+    }
+  }
+  
+  return keyPresses.sort((a, b) => a.frame - b.frame);
+};
