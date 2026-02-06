@@ -151,22 +151,22 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
         }}
       />
       
-      {/* typing.com branding - top right */}
+      {/* typing.com branding - bottom right */}
       <div
         style={{
           position: 'absolute',
-          top: 30,
-          right: 40,
+          bottom: 20,
+          right: 30,
           zIndex: 50,
         }}
       >
         <span
           style={{
-            color: 'rgba(255,255,255,0.95)',
-            fontSize: 30,
+            color: 'rgba(255,255,255,0.7)',
+            fontSize: 24,
             fontFamily,
-            fontWeight: 700,
-            textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+            fontWeight: 600,
+            textShadow: '0 2px 8px rgba(0,0,0,0.3)',
             letterSpacing: '-0.5px',
           }}
         >
@@ -237,22 +237,6 @@ export const HomeRowVideo: React.FC<HomeRowProps> = ({
               width: scaledHandWidth,
               height: 'auto',
               pointerEvents: 'none',
-            }}
-          />
-          
-          {/* Teacher Character - bottom left */}
-          <img
-            src={staticFile('teacher-character.png')}
-            alt="teacher"
-            style={{
-              position: 'absolute',
-              left: 40,
-              bottom: 140,
-              height: 280,
-              width: 'auto',
-              pointerEvents: 'none',
-              transform: `translateY(${Math.sin(frame * 0.08) * 4}px)`,
-              filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.3))',
             }}
           />
           
